@@ -1,0 +1,22 @@
+[project]
+name = "p1"
+version = "0.1.0"
+description = "Phase 1: LLM application fundamentals and prompt evaluation"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "agent-common",
+    "openai>=2.42.0",
+    "pydantic>=2.10",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "examples"]
+
+[tool.uv.sources]
+agent-common = { path = "../shared", editable = true }
