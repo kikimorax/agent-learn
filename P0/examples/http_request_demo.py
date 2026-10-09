@@ -133,6 +133,48 @@ async def fetch_async_concurrent():
                     print(payload3.get("json"))
 
 
+def fetch_mock():
+    """离线模拟 HTTP 响应：uv run --project P0 python P0/examples/http_request_demo.py mock。"""
+    # 第一步：处理器接收 Request，返回预设的 Response，或抛出请求异常。
+    def handler(request: httpx.Request):
+        if request.url.path == "/ok":
+            return httpx.Response(200, json={"answer": "你好"})
+        if request.url.path == "/not-json":
+            return httpx.Response(200, text="<html>这不是 JSON</html>")
+        if request.url.path == "/invalid-json":
+            # 声明为 JSON，但正文不合法，用于触发 safe_json 的解析失败分支。
+            return httpx.Response(
+                200,
+                headers={"Content-Type": "application/json"},
+                content=b"not valid json",
+            )
+        if request.url.path == "/bad-gateway":
+            return httpx.Response(502, content=b"")
+        if request.url.path == "/timeout":
+            # 主动抛出异常模拟超时，不需要真的等待。
+            raise httpx.ReadTimeout("模拟读取超时", request=request)
+        return httpx.Response(404)
+
+    # 第二步：把 MockTransport 注入 Client。下面的请求不会访问网络。
+    # transport 配置在 Client 上，不能传给顶层 httpx.request。
+    transport = httpx.MockTransport(handler)
+    with httpx.Client(transport=transport, base_url="https://test.local") as client:
+        for path in ["/ok", "/not-json", "/invalid-json", "/bad-gateway", "/timeout"]:
+            print(f"\n模拟场景: {path}")
+            try:
+                # 第三步：正常发起请求，实际由 handler 生成响应。
+                response = client.get(path)
+            except httpx.RequestError as exc:
+                print(f"请求异常: {type(exc).__name__}: {exc}")
+                continue
+
+            print(f"HTTP 状态码: {response.status_code}")
+            # safe_json 依次检查状态码、内容类型和 JSON 格式，失败时返回 None。
+            # JSON 解析成功后，实际业务仍需检查字段和业务状态。
+            payload = safe_json(response, path)
+            print(f"解析结果: {payload!r}")
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] == "sync":
         print("正在执行同步版本...")
@@ -143,3 +185,6 @@ if __name__ == "__main__":
     elif sys.argv[1] == "con":
         print("正在执行异步并发版本...")
         asyncio.run(fetch_async_concurrent())
+    elif sys.argv[1] == "mock":
+        print("正在执行 MockTransport 离线示例...")
+        fetch_mock()

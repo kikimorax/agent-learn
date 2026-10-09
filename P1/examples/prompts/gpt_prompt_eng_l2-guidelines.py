@@ -1,21 +1,12 @@
-from openai.types.chat import ChatCompletionMessageParam
+from collections.abc import Callable
+from pathlib import Path
+import sys
 
-from agent_common.llm_config import LLMSettings
-from openai_client import create_client
+# 支持直接运行子目录脚本，复用 examples 下的公共模块。
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-
-def get_completion(prompt: str, model: str | None = None) -> str | None:
-    messages: list[ChatCompletionMessageParam] = [{"role": "user", "content": prompt}]
-    settings = LLMSettings.from_environment()
-    with create_client(settings) as client:
-        response = client.chat.completions.create(
-            model=model or settings.model,
-            messages=messages,
-            temperature=0,
-        )
-    print(f"raw response: {response}\n-----------------------------")
-    return response.choices[0].message.content
-
+from case_cli import run_selected_case
+from openai_client import get_completion_text
 
 # Principle 1: Write clear and specific instructions
 
@@ -43,7 +34,7 @@ def p1_t1_use_delimiters() -> None:
     ```{text}```
     """
 
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -58,7 +49,7 @@ def p1_t2_structured_output() -> None:
     book_id, title, author, genre.
     """
 
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -92,7 +83,7 @@ def p1_t3_check_conditions_text_1() -> None:
 
     """ + '"""' + f"{text_1}" + '"""'
 
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print("Completion for Text 1:")
     print(response)
 
@@ -127,7 +118,7 @@ def p1_t3_check_conditions_text_2() -> None:
 
     """ + '"""' + f"{text_2}" + '"""'
 
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print("Completion for Text 2:")
     print(response)
 
@@ -147,7 +138,7 @@ def p1_t4_few_shot_prompting() -> None:
     <孩子>: 教教我什么是韧性。
     """
 
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -183,7 +174,7 @@ def p2_t1_specify_steps_prompt_1() -> None:
     ```{text}```
     """
 
-    response = get_completion(prompt_1)
+    response = get_completion_text(prompt_1)
     print("Completion for prompt 1:")
     print(response)
 
@@ -220,7 +211,7 @@ def p2_t1_specify_steps_prompt_2() -> None:
 
     Text: <{text}>
     """
-    response = get_completion(prompt_2)
+    response = get_completion_text(prompt_2)
     print("\nCompletion for prompt 2:")
     print(response)
 
@@ -249,7 +240,7 @@ def p2_t2_student_solution_check() -> None:
     总成本：100x + 250x + 100,000 + 100x = 450x + 100,000
     """
 
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -303,7 +294,7 @@ def p2_t2_student_solution_check_with_reasoning() -> None:
     实际解法：
     """
 
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -322,33 +313,26 @@ def model_limitations_hallucination_demo() -> None:
 
     prompt = "Tell me about AeroGlide UltraSlim Smart Toothbrush by Boie"
 
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
+CASES: dict[str, Callable[[], None]] = {
+    "p1_t1_use_delimiters": p1_t1_use_delimiters,
+    "p1_t2_structured_output": p1_t2_structured_output,
+    "p1_t3_check_conditions_text_1": p1_t3_check_conditions_text_1,
+    "p1_t3_check_conditions_text_2": p1_t3_check_conditions_text_2,
+    "p1_t4_few_shot_prompting": p1_t4_few_shot_prompting,
+    "p2_t1_specify_steps_prompt_1": p2_t1_specify_steps_prompt_1,
+    "p2_t1_specify_steps_prompt_2": p2_t1_specify_steps_prompt_2,
+    "p2_t2_student_solution_check": p2_t2_student_solution_check,
+    "p2_t2_student_solution_check_with_reasoning": p2_t2_student_solution_check_with_reasoning,
+    "model_limitations_hallucination_demo": model_limitations_hallucination_demo,
+}
+
+
 def main() -> None:
-    # print(get_completion("Hello!"))
-    # p1_t1_use_delimiters()
-    print("===============================")
-    # 如果连续调用，模型会输出类似下边的思考过程才会是正式结果，为什么？
-    # **Creating a JSON response**
-    #
-    #  I need to keep the answer simple and not use any tools. It should be short and possibly in a markdown code block, starting with the language name. I’ll create a JSON format that includes keys like book_id, title, author, and genre. I’m thinking of three made-up titles. It feels clear that I should format it as an array of objects. So, let’s get ready to craft that valid JSON!```json
-
-    # Principle 1
-    # p1_t2_structured_output()
-    # p1_t3_check_conditions_text_1()
-    # p1_t3_check_conditions_text_2()
-    # p1_t4_few_shot_prompting()
-
-    # Principle 2  COT OR ReAct
-    # p2_t1_specify_steps_prompt_1()
-    # p2_t1_specify_steps_prompt_2()
-    # p2_t2_student_solution_check()
-    # p2_t2_student_solution_check_with_reasoning()
-
-    # Model limitation
-    model_limitations_hallucination_demo()
+    run_selected_case(CASES, "P1 guidelines 案例（Principle 1/2 与幻觉示例）")
 
 
 if __name__ == "__main__":

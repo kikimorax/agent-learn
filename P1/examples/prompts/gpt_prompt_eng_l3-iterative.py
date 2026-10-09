@@ -1,23 +1,15 @@
 # Iterative Prompt Development
 # 在本课中，你将通过反复分析和优化提示词，从产品规格表生成营销文案。
 
-from openai.types.chat import ChatCompletionMessageParam
+from collections.abc import Callable
+from pathlib import Path
+import sys
 
-from agent_common.llm_config import LLMSettings
-from openai_client import create_client
+# 支持直接运行子目录脚本，复用 examples 下的公共模块。
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-
-def get_completion(prompt: str, model: str | None = None) -> str | None:
-    messages: list[ChatCompletionMessageParam] = [{"role": "user", "content": prompt}]
-    settings = LLMSettings.from_environment()
-    with create_client(settings) as client:
-        response = client.chat.completions.create(
-            model=model or settings.model,
-            messages=messages,
-            temperature=0,
-        )
-    print(f"raw response: {response}\n-----------------------------")
-    return response.choices[0].message.content
+from case_cli import run_selected_case
+from openai_client import get_completion_text
 
 
 # 产品规格表（椅子）
@@ -76,7 +68,7 @@ def gen_marketing_description() -> None:
 
     Technical specifications: ```{fact_sheet_chair}```
     """
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -96,7 +88,7 @@ def issue1_limit_length() -> None:
 
     Technical specifications: ```{fact_sheet_chair}```
     """
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
     if response:
         print(f"\n字数统计: {len(response.split())} 个单词") # 为什么我这是90个左右？
@@ -122,7 +114,7 @@ def issue2_focus_on_materials() -> None:
 
     Technical specifications: ```{fact_sheet_chair}```
     """
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -148,7 +140,7 @@ def issue2_focus_on_materials_with_product_id() -> None:
 
     Technical specifications: ```{fact_sheet_chair}```
     """
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -183,17 +175,21 @@ def issue3_add_dimensions_table_html() -> None:
 
     Technical specifications: ```{fact_sheet_chair}```
     """
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
+CASES: dict[str, Callable[[], None]] = {
+    "gen_marketing_description": gen_marketing_description,
+    "issue1_limit_length": issue1_limit_length,
+    "issue2_focus_on_materials": issue2_focus_on_materials,
+    "issue2_focus_on_materials_with_product_id": issue2_focus_on_materials_with_product_id,
+    "issue3_add_dimensions_table_html": issue3_add_dimensions_table_html,
+}
+
+
 def main() -> None:
-    print("===============================")
-    # gen_marketing_description()
-    # issue1_limit_length()
-    # issue2_focus_on_materials()
-    # issue2_focus_on_materials_with_product_id()
-    issue3_add_dimensions_table_html()
+    run_selected_case(CASES, "P1 iterative 案例（营销文案迭代优化）")
 
 
 if __name__ == "__main__":

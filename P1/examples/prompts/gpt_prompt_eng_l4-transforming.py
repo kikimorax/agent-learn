@@ -2,24 +2,15 @@
 # In this lesson, we explore text transformation tasks with LLMs:
 # translation, tone adjustment, format conversion, and proofreading.
 
-from openai.types.chat import ChatCompletionMessageParam
+from collections.abc import Callable
+from pathlib import Path
+import sys
 
-from agent_common.llm_config import LLMSettings
-from openai_client import create_client
+# 支持直接运行子目录脚本，复用 examples 下的公共模块。
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-
-def get_completion(
-    prompt: str, model: str | None = None, temperature: float = 0
-) -> str | None:
-    messages: list[ChatCompletionMessageParam] = [{"role": "user", "content": prompt}]
-    settings = LLMSettings.from_environment()
-    with create_client(settings) as client:
-        response = client.chat.completions.create(
-            model=model or settings.model,
-            messages=messages,
-            temperature=temperature,
-        )
-    return response.choices[0].message.content
+from case_cli import run_selected_case
+from openai_client import get_completion_text
 
 
 def translation_basic() -> None:
@@ -27,7 +18,7 @@ def translation_basic() -> None:
     Translate the following English text to Spanish:
     ```Hi, I would like to order a blender```
     """
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -36,7 +27,7 @@ def detect_language() -> None:
     Tell me which language this is:
     ```Combien coute le lampadaire?```
     """
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -46,7 +37,7 @@ def translate_to_multiple_styles() -> None:
     and English pirate:
     ```I want to order a basketball```
     """
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -56,7 +47,7 @@ def spanish_formal_informal() -> None:
     formal and informal forms:
     'Would you like to order a pillow?'
     """
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -71,14 +62,14 @@ def universal_translator_demo() -> None:
 
     for issue in user_messages:
         detect_prompt = f"Tell me what language this is: ```{issue}```"
-        lang = get_completion(detect_prompt)
+        lang = get_completion_text(detect_prompt)
         print(f"Original message ({lang}): {issue}")
 
         translate_prompt = f"""
         Translate the following text to English and Korean:
         ```{issue}```
         """
-        translated = get_completion(translate_prompt)
+        translated = get_completion_text(translate_prompt)
         print(translated)
         print("-" * 40)
 
@@ -88,7 +79,7 @@ def tone_transformation() -> None:
     Translate the following from slang to a business letter:
     'Dude, this is Joe, check out this spec on this standing lamp.'
     """
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -106,7 +97,7 @@ def format_conversion_json_to_html() -> None:
     table with column headers and title:
     {data_json}
     """
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -127,7 +118,7 @@ def spellcheck_examples() -> None:
         If you do not find any errors, just say "No errors found".
         Text: ```{sample}```
         """
-        response = get_completion(prompt)
+        response = get_completion_text(prompt)
         print(response)
 
 
@@ -144,7 +135,7 @@ def rewrite_review() -> None:
     """
 
     prompt = f"proofread and correct this review: ```{review_text}```"
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -166,7 +157,7 @@ def rewrite_review_advanced() -> None:
     Output in markdown format.
     Text: ```{review_text}```
     """
-    response = get_completion(prompt)
+    response = get_completion_text(prompt)
     print(response)
 
 
@@ -218,18 +209,19 @@ def run_all_cases() -> None:
     case_6_review_rewrite()
 
 
-def main() -> None:
-    print("===============================")
-    # 按章节运行单个案例：
-    # case_1_translation()
-    # case_2_universal_translator()
-    case_3_tone_transformation()
-    # case_4_format_conversion()
-    # case_5_spellcheck()
-    # case_6_review_rewrite()
+CASES: dict[str, Callable[[], None]] = {
+    "case_1_translation": case_1_translation,
+    "case_2_universal_translator": case_2_universal_translator,
+    "case_3_tone_transformation": case_3_tone_transformation,
+    "case_4_format_conversion": case_4_format_conversion,
+    "case_5_spellcheck": case_5_spellcheck,
+    "case_6_review_rewrite": case_6_review_rewrite,
+    "run_all_cases": run_all_cases,
+}
 
-    # 一次性跑完整课：
-    # run_all_cases()
+
+def main() -> None:
+    run_selected_case(CASES, "P1 transforming 案例（翻译、语气、格式转换、拼写检查）")
 
 
 if __name__ == "__main__":
